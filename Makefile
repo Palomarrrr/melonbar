@@ -8,6 +8,7 @@ PATH_LOCAL_LIB ?= ${PATH_LOCAL}/lib
 PATH_X11_INC ?= ${PATH_X11}/include
 PATH_X11_LIB ?= ${PATH_X11}/lib
 PATH_FREETYPE_INC ?= /usr/include/freetype2
+INSTALL_PATH ?= /usr/local/bin
 
 # Includes/Libs/Flags
 INCLUDE = -I${PATH_LOCAL_INC} -I${PATH_X11_INC} -I${PATH_FREETYPE_INC} -I${PATH_X11_INC}/freetype2
@@ -33,10 +34,17 @@ all: $(OBJS)
 install: all
 	@echo ''
 	@echo '=====| Installing $(TARGET) |====='
-	install -m 755 $(TARGET) /usr/local/bin/$(TARGET)
+	install -m 755 $(TARGET) ${INSTALL_PATH}/$(TARGET)
 	@echo ''
 	@echo 'Make sure to create a `melonbar` directory in .config'
 	@echo 'and place the config file in there.'
+
+config: all
+	@echo ''
+	@echo '=====| Creating ${PATH_CONFIG}/melonbar |====='
+	mkdir -p ${PATH_CONFIG}/melonbar
+	@echo '=====| Copying config file |====='
+	cp melonbar.conf ${PATH_CONFIG}/melonbar/melonbar.conf
 
 clean:
 	@echo ''
