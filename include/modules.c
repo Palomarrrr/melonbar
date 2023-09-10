@@ -58,8 +58,7 @@ void PrintToBar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *msg,
 }
 
 // Get the current local time
-// TODO - ADD DIFFERENT FORMATS
-//  EX. Y-M-D, D-M-Y, 24 hour time, etc
+// TODO - Add different formats ex. y-m-d, d-m-y, 24 hour time, etc
 void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format_flag){
     char *msg= malloc(sizeof(char) * 32);
     time_t t = time(NULL);
@@ -82,6 +81,9 @@ void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
     free(msg);
 }
 
+// Display the current memory usage
+// I don't this is working correctly either... Need to look into it
+// TODO - Add a preprocessor switch for Linux and other OSs so that this can be used on BSDs
 void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units, unsigned char get_swap){
     static unsigned char err_status = 0;
     struct sysinfo info;
@@ -125,6 +127,7 @@ void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units
     free(msg);
 }
 
+// Display battery percentage
 void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     static unsigned char err_status = 0; // This should act as a basic error flag
     FILE *fp;
@@ -169,6 +172,8 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     free(msg); // Clean up
 }
 
+// Display CPU usage
+// I don't think this works properly... Need to look deeper into it
 void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     static unsigned char err_status = 0;
     FILE *fp;
@@ -213,16 +218,17 @@ void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     free(msg);
 }
 
+// Display the current user@hostname
 void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     static int has_run = 0;
     static char *users_name = NULL;
     static char *host_name = NULL;
     char *msg = malloc(sizeof(char) * 50);
 
-    if(has_run <= 3){ // SHIT DOESN'T GET AUTO FREED LIKE IT SHOULD BE. JUST CACHE IT
+    if(!has_run){  // This doesn't really need to be ran more than once
         users_name = getenv("USER");
-        host_name = getenv("HOSTNAME"); // THIS SHIT RETURNS NULL FOR SOME FUCKING REASON AND I CANT FIGURE OUT WHY
-        has_run++;
+        host_name = getenv("HOSTNAME"); // THIS SHIT RETURNS NULL FOR SOME FUCKING REASON AND I CANT FIGURE OUT WHY AAAAAAAAAAAAAAAAAAAAAA
+        has_run = 1;
     }
 
     snprintf(msg, 50, "%s@%s", users_name, host_name);
@@ -232,8 +238,9 @@ void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     free(msg);
 }
 
+// Display an environment variable
 void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *var_name, char *format){
-    char *var_str = getenv(var_name);
+    char *var_str = getenv(var_name); // Thinking about caching this so it doesn't have to constantly run
     char *msg = malloc(sizeof(char) * 50);
 
     snprintf(msg, 50, format, var_str);
@@ -242,13 +249,16 @@ void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *v
     free(msg);
 }
 
+// Display info about the current kernel version
+// TODO - Implement the format flag to allow the user to display whatever they want
 void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format){
     static int has_run = 0;
     char *msg = malloc(sizeof(char)*50);
     static struct utsname system_name = {0};
 
-    if(!has_run){ // Cache the shit as to not alloc more memory
+    if(!has_run){ // This doesn't need to run more than once
         uname(&system_name);
+        has_run = 1;
     }
 
     snprintf(msg, 50, "KRN: %s" , system_name.release);

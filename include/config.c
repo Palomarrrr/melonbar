@@ -25,20 +25,22 @@ UserConfig user_cfg = {
     .config_location = NULL,
 };
 
+int cli_opts[4] = {-1,-1,-1,-1}; // Holder for command line flags
+
 inline void ParseOptions(int argc, char **argv){
     for(int i = 1; i < argc && argv[i][0] == '-'; i++){
         switch(argv[i][1]){
             case 'x':
-                sscanf(argv[i], "-x=%d", &user_cfg.bar_x);
+                sscanf(argv[i], "-x=%d", &cli_opts[0]);
                 break;
             case 'y':
-                sscanf(argv[i], "-y=%d", &user_cfg.bar_y);
+                sscanf(argv[i], "-y=%d", &cli_opts[1]);
                 break;
             case 'W':
-                sscanf(argv[i], "-W=%d", &user_cfg.bar_wid);
+                sscanf(argv[i], "-W=%d", &cli_opts[2]);
                 break;
             case 'H':
-                sscanf(argv[i], "-H=%d", &user_cfg.bar_hgt);
+                sscanf(argv[i], "-H=%d", &cli_opts[3]);
                 break;
             case 'c':
                 free(user_cfg.config_location);
@@ -85,11 +87,26 @@ inline void ReadConfigFile(char *file_name){ // WIP
         char *curr_field_label = malloc(sizeof(char) * 20);
         char *curr_field_data = malloc(sizeof(char) * 480); // I know... This is not good
 
-        sscanf(curr_line, "%s = {%s}", curr_field_label, curr_field_data); // TODO -- THIS DOES NOT CAPTURE SPACES. I NEED IT TO IN ORDER TO HAVE MODULES WORK PROPERLY
+        sscanf(curr_line, "%s = {%s}", curr_field_label, curr_field_data);
 
         if(!strncmp(curr_field_label, "BASIC", 20)){ // Do shit to parse whatever in here
             sscanf(curr_field_data, "%d,%d,%d,%d}", &user_cfg.bar_x, &user_cfg.bar_y, &user_cfg.bar_wid, &user_cfg.bar_hgt);
-
+            for(int cli = 0; cli < 4; cli++) // This is really janky... but it works for now
+                if(cli_opts[cli] != -1) // If the option equals -1, then it wasn't changed
+                    switch(cli){
+                        case 0:
+                            user_cfg.bar_x = cli_opts[0];
+                            break;
+                        case 1:
+                            user_cfg.bar_y = cli_opts[1];
+                            break;
+                        case 2:
+                            user_cfg.bar_wid = cli_opts[2];
+                            break;
+                        case 3:
+                            user_cfg.bar_hgt = cli_opts[3];
+                    }
+                
         }else if(!strncmp(curr_field_label, "COLORS", 20)){
             user_cfg.color_bar = malloc(sizeof(char) * strnlen(curr_field_data, 10));
             user_cfg.color_border = malloc(sizeof(char) * strnlen(curr_field_data, 10));

@@ -26,10 +26,14 @@
 #include <X11/Xthreads.h>
 #include <X11/Xft/Xft.h>
 
+#include <sys/utsname.h>
 #ifdef __gnu_linux__ // MAKE THIS ACTUALLY POSIX COMPLIANT. SWITCH TO SYS/SYSCTL
 #include <sys/sysinfo.h>
-#include <sys/utsname.h>
+#else
+#include <sys/sysctl.h>
+#include <sys/types.h>
 #endif
+    
 
 #define THROW_ERR(module, msg) fprintf(stderr, "\x1b[31m==========| ERROR |==========\x1b[0m\n"), fprintf(stderr, "\x1b[31m%s: %s\x1b[0m\n",module, msg) // Make the process of throwing errors a little less monotonous
 
