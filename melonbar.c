@@ -127,7 +127,7 @@ int main(int argc, char **argv){
         }
 
         XSync(dpy, True); // Update the display
-        sleep(1);
+        usleep(500000);
         XftDrawDestroy(fontctx.draw);
     }
 

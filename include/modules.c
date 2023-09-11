@@ -15,7 +15,7 @@
 *************************************/
 
 int L_OFFSET = 0;
-int R_OFFSET = 0;
+int R_OFFSET = 0; // TO BE IMPLEMENTED
 
 /*
 char *GetValueAsPercentBar(double curr_val, double max_val, double min_val, double steps, int *strlen){
@@ -46,15 +46,14 @@ char *GetValueAsPercentBar(double curr_val, double max_val, double min_val, doub
 void PrintToBar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *msg, unsigned char style){
    // Get the string length 
     int msglen = strnlen(msg, 255);
-    int visual_len = msglen + (msglen * (user_cfg.font_size/2)); // msglen + (msglen * fontsize/2)
 
     // Print the string
     XftTextExtentsUtf8(dpy, fctx->font, (XftChar8 *)msg, msglen, &fctx->ext);
-    XftDrawStringUtf8(fctx->draw, &fctx->fontColor, fctx->font, L_OFFSET, (user_cfg.bar_hgt / 2) + 3, (XftChar8 *)msg, msglen);
+    XftDrawStringUtf8(fctx->draw, &fctx->fontColor, fctx->font, L_OFFSET, (user_cfg.bar_hgt + fctx->ext.y) / 2, (XftChar8 *)msg, msglen);
 
-    XDrawLine(dpy, *win, *gc, L_OFFSET + visual_len + user_cfg.font_size, 3, L_OFFSET + visual_len + user_cfg.font_size, ((user_cfg.bar_hgt/2) + 3) * 2 - 8);
+    XDrawLine(dpy, *win, *gc, L_OFFSET + fctx->ext.width + user_cfg.font_size, 3, L_OFFSET + fctx->ext.width + user_cfg.font_size, ((user_cfg.bar_hgt/2) + 3) * 2 - 8);
 
-    L_OFFSET += visual_len + (user_cfg.font_size * 2);
+    L_OFFSET += fctx->ext.width + (user_cfg.font_size * 2); // Set the offset for next module
 }
 
 // Get the current local time
@@ -177,42 +176,46 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
 void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc){
     static unsigned char err_status = 0;
     FILE *fp;
-    static int last_total_jiffies = 0, last_work_jiffies = 0; // Jiffies from the previous run
-    int cpu_usr, cpu_nice, cpu_sys, cpu_idle, cpu_iowait, cpu_irq, cpu_sirq; // cpustat fields
-    int total_jiffies, work_jiffies; // Current jiffies
-    int total_period, work_period; // The difference in jiffies over the period
-    float cpu_usage = 0; // The actual cpu usage
+    int n_cores; // number of cpu cores
+    float curr_jobs = 0; // The actual cpu usage
     char *msg = malloc(sizeof(char) * 30);
 
-    fp = fopen("/proc/stat", "r");
+    fp = fopen("/proc/cpuinfo", "r");
 
     if(fp == NULL){
         if(!err_status){
-            THROW_ERR("CPUUsage", "Failed to read from /proc/stat\nYou may not have permission to read from this file");
+            THROW_ERR("CPUUsage", "Failed to read from /proc/cpuinfo\nYou may not have permission to read from this file");
             err_status = 1;
         }
         fclose(fp);
         return;
     }
-
-    fscanf(fp, "cpu %d %d %d %d %d %d %d", &cpu_usr, &cpu_nice, &cpu_sys, &cpu_idle, &cpu_iowait, &cpu_irq, &cpu_sirq); // Read the file
+    
+    for(int i = 0; i < 10; i++){ // Skip to line 11
+        fscanf(fp, "%*[^\n]\n");
+        if(i == 9){
+            fscanf(fp, "%*[^:]: %d", &n_cores);
+        }
+    }
+    
     fclose(fp);
 
-    // Some math to get things how we want them
-    total_jiffies = cpu_usr + cpu_nice + cpu_sys + cpu_idle + cpu_iowait + cpu_irq + cpu_sirq;
-    work_jiffies = cpu_usr + cpu_nice + cpu_sys;
+    fp = fopen("/proc/loadavg", "r");
 
-    total_period = total_jiffies - last_total_jiffies;
-    work_period = work_jiffies - last_work_jiffies;
+    if(fp == NULL){
+        if(!err_status){
+            THROW_ERR("CPUUsage", "Failed to read from /proc/loadavg\nYou may not have permission to read from this file");
+            err_status = 1;
+        }
+        fclose(fp);
+        return;
+    }
+    
+    fscanf(fp, "%f\n", &curr_jobs);
+    fclose(fp);
 
-    // Assign the current jiffies to the last jiffies for next run
-    last_total_jiffies = total_jiffies;
-    last_work_jiffies = work_jiffies;
-
-    cpu_usage = ((float)work_period/(float)total_period) * 100.0;
-
-    snprintf(msg, 30, "CPU:%4.1f%%", cpu_usage); // Trying to format this properly... Please work C
-
+    snprintf(msg, 29, "CPU: %4.1f%%", (curr_jobs * 100.0) / (float)n_cores); // Calculate the percentage and put it in the buffer
+    
     PrintToBar(dpy, win, fctx, gc, msg, 0);
 
     free(msg);

@@ -1,10 +1,6 @@
 # Melonbar
 I need a status bar for my laptop, so I made this.
 
-## Just a quick warning
-This is the development branch!\
-Builds may not be fully working.\
-
 ## Dependencies
 - `libX11`
 - `freetype2`
