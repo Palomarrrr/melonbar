@@ -1,5 +1,6 @@
 #include "config.h"
 #include "xcommon.h"
+#include <X11/Xlib.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,7 +94,7 @@ inline void ReadConfigFile(char *file_name){ // WIP
         if(!strncmp(curr_field_label, "BASIC", 20)){ // Do shit to parse whatever in here
             sscanf(curr_field_data, "%d,%d,%d,%d}", &user_cfg.bar_x, &user_cfg.bar_y, &user_cfg.bar_wid, &user_cfg.bar_hgt);
             for(int cli = 0; cli < 4; cli++) // This is really janky... but it works for now
-                if(cli_opts[cli] != INT_MIN) // If the option equals INT_MIN, then it wasn't changed
+                if(cli_opts[cli] != INT_MIN) // If the opion doesnt equal INT_MIN, then it wasn't changed
                     switch(cli){
                         case 0:
                             user_cfg.bar_x = cli_opts[0];
@@ -107,7 +108,6 @@ inline void ReadConfigFile(char *file_name){ // WIP
                         case 3:
                             user_cfg.bar_hgt = cli_opts[3];
                     }
-                
         }else if(!strncmp(curr_field_label, "COLORS", 20)){
             user_cfg.color_bar = malloc(sizeof(char) * strnlen(curr_field_data, 10));
             user_cfg.color_border = malloc(sizeof(char) * strnlen(curr_field_data, 10));
@@ -208,7 +208,6 @@ inline void ReadConfigFile(char *file_name){ // WIP
                             i++;
                         }
                 }
-
                 if(module_count > 20 || module_read_state & MODULE_END_OF_READ_STATE){ // If over limit for commands or end of list
                     user_cfg.n_modules = module_count + 1;
                     break; // Just break out
@@ -218,7 +217,6 @@ inline void ReadConfigFile(char *file_name){ // WIP
         }else{
             THROW_ERR("ReadConfigFile", "There was an invalid field found in your config file\n");
         }
-
         free(curr_line);
         free(curr_field_label);
         free(curr_field_data);

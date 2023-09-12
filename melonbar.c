@@ -45,28 +45,30 @@ static inline void GCInit(Window *window, GC *gc, XGCValues *xgc_values, FontCon
 }
 
 static inline void DisplayInit(Window *window, XSetWindowAttributes *xwa, GC *gc, XGCValues *xgc_values, FontContext *fontctx, XSizeHints *xsh){
-   if(!(dpy = XOpenDisplay(NULL))){
-        fprintf(stderr, "done fucked up\n"); 
+    if(!(dpy = XOpenDisplay(NULL))){
+        THROW_ERR("DisplayInit", "Failed to open the display");
         exit(1);
-   }
-   screen = DefaultScreen(dpy);
+    }
+    screen = DefaultScreen(dpy);
+    if(user_cfg.bar_wid <= 0) user_cfg.bar_wid = DisplayWidth(dpy, screen) - 2; // Make sure things will actually work
+    if(user_cfg.bar_hgt <= 0) user_cfg.bar_hgt = 25;
 
-   xwa->background_pixel = convertColorString(user_cfg.color_bar);
-   xwa->border_pixel = convertColorString(user_cfg.color_border);
-   xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask;
-   *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel, xwa);
+    xwa->background_pixel = convertColorString(user_cfg.color_bar);
+    xwa->border_pixel = convertColorString(user_cfg.color_border);
+    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask;
+    *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel, xwa);
 
-   GCInit(window, gc, xgc_values, fontctx);
+    GCInit(window, gc, xgc_values, fontctx);
 
-   xsh->min_width = user_cfg.bar_wid;
-   xsh->min_height = user_cfg.bar_hgt; 
-   xsh->max_width = user_cfg.bar_wid; 
-   xsh->max_height = user_cfg.bar_hgt; 
-   xsh->flags = PMinSize | PMaxSize; //| PPosition;
-   XSetSizeHints(dpy, *window, xsh, XA_WM_NORMAL_HINTS);
+    xsh->min_width = user_cfg.bar_wid;
+    xsh->min_height = user_cfg.bar_hgt; 
+    xsh->max_width = user_cfg.bar_wid; 
+    xsh->max_height = user_cfg.bar_hgt; 
+    xsh->flags = PMinSize | PMaxSize; //| PPosition;
+    XSetSizeHints(dpy, *window, xsh, XA_WM_NORMAL_HINTS);
 
-   XStoreName(dpy,*window, "Status Bar");
-   XMapWindow(dpy, *window);
+    XStoreName(dpy,*window, "Status Bar");
+    XMapWindow(dpy, *window);
 }
 
 int main(int argc, char **argv){
