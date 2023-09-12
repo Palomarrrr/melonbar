@@ -1,5 +1,6 @@
 #include "config.h"
 #include "xcommon.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +14,7 @@
 #define MODULE_START_READ_STATE 0b01000000
 
 UserConfig user_cfg = {
-    .bar_x = 0,
+    .bar_x = -1,
     .bar_y = 0,
     .bar_wid = 1918,
     .bar_hgt = 25,
@@ -25,7 +26,7 @@ UserConfig user_cfg = {
     .config_location = NULL,
 };
 
-int cli_opts[4] = {-1,-1,-1,-1}; // Holder for command line flags
+int cli_opts[4] = {INT_MIN,INT_MIN,INT_MIN,INT_MIN}; // Holder for command line flags
 
 inline void ParseOptions(int argc, char **argv){
     for(int i = 1; i < argc && argv[i][0] == '-'; i++){
@@ -92,7 +93,7 @@ inline void ReadConfigFile(char *file_name){ // WIP
         if(!strncmp(curr_field_label, "BASIC", 20)){ // Do shit to parse whatever in here
             sscanf(curr_field_data, "%d,%d,%d,%d}", &user_cfg.bar_x, &user_cfg.bar_y, &user_cfg.bar_wid, &user_cfg.bar_hgt);
             for(int cli = 0; cli < 4; cli++) // This is really janky... but it works for now
-                if(cli_opts[cli] != -1) // If the option equals -1, then it wasn't changed
+                if(cli_opts[cli] != INT_MIN) // If the option equals INT_MIN, then it wasn't changed
                     switch(cli){
                         case 0:
                             user_cfg.bar_x = cli_opts[0];
