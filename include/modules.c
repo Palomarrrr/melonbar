@@ -49,16 +49,21 @@ void PrintToBar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *msg,
 
     // Print the string
     XftTextExtentsUtf8(dpy, fctx->font, (XftChar8 *)msg, msglen, &fctx->ext);
-    XftDrawStringUtf8(fctx->draw, &fctx->fontColor, fctx->font, L_OFFSET, (user_cfg.bar_hgt + fctx->ext.y) / 2, (XftChar8 *)msg, msglen);
 
-    XDrawLine(dpy, *win, *gc, L_OFFSET + fctx->ext.width + user_cfg.font_size, 3, L_OFFSET + fctx->ext.width + user_cfg.font_size, ((user_cfg.bar_hgt/2) + 3) * 2 - 8);
-
-    L_OFFSET += fctx->ext.width + (user_cfg.font_size * 2); // Set the offset for next module
+    if(style & STYLE_R_ALIGN){
+        XftDrawStringUtf8(fctx->draw, &fctx->fontColor, fctx->font, R_OFFSET - fctx->ext.width, (user_cfg.bar_hgt + fctx->ext.y) / 2, (XftChar8 *)msg, msglen);
+        XDrawLine(dpy, *win, *gc, R_OFFSET - fctx->ext.width - user_cfg.font_size, 3, R_OFFSET - fctx->ext.width - user_cfg.font_size, ((user_cfg.bar_hgt/2) + 3) * 2 - 8);
+        R_OFFSET -= fctx->ext.width + (user_cfg.font_size * 2); // Set the offset for next module
+    }else{ // Else just assume left align ig?
+        XftDrawStringUtf8(fctx->draw, &fctx->fontColor, fctx->font, L_OFFSET, (user_cfg.bar_hgt + fctx->ext.y) / 2, (XftChar8 *)msg, msglen);
+        XDrawLine(dpy, *win, *gc, L_OFFSET + fctx->ext.width + user_cfg.font_size, 3, L_OFFSET + fctx->ext.width + user_cfg.font_size, ((user_cfg.bar_hgt/2) + 3) * 2 - 8);
+        L_OFFSET += fctx->ext.width + (user_cfg.font_size * 2); // Set the offset for next module
+    }
 }
 
 // Get the current local time
 // TODO - Add different formats ex. y-m-d, d-m-y, 24 hour time, etc
-void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format_flag){
+void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format_flag, unsigned char style){
     char *msg= malloc(sizeof(char) * 32);
     time_t t = time(NULL);
     struct tm *local_time= localtime(&t);
@@ -75,7 +80,7 @@ void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
     // Create the return string
     snprintf(msg, 32, "%02d-%02d-%04d | %02d:%02d:%02d %s", local_time->tm_mon+1, local_time->tm_mday, local_time->tm_year+1900, local_time->tm_hour, local_time->tm_min, local_time->tm_sec, ampm);
 
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }
@@ -83,7 +88,7 @@ void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
 // Display the current memory usage
 // I don't this is working correctly either... Need to look into it
 // TODO - Add a preprocessor switch for Linux and other OSs so that this can be used on BSDs
-void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units, unsigned char get_swap){
+void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units, unsigned char get_swap, unsigned char style){
     static unsigned char err_status = 0;
     struct sysinfo info;
     sysinfo(&info);
@@ -121,13 +126,13 @@ void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units
         snprintf(msg, 50, "SWP:%d%cb/%d%cb", used_mem, units, max_mem, units);
     }
 
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }
 
 // Display battery percentage
-void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
+void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
     static unsigned char err_status = 0; // This should act as a basic error flag
     FILE *fp;
 
@@ -165,7 +170,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
         snprintf(msg, 50, "BAT:%d%% (%s)", bat_percent, stat);
     }
 
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(stat);
     free(msg); // Clean up
@@ -173,7 +178,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc){
 
 // Display CPU usage
 // I don't think this works properly... Need to look deeper into it
-void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc){
+void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
     static unsigned char err_status = 0;
     FILE *fp;
     int n_cores; // number of cpu cores
@@ -216,13 +221,13 @@ void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc){
 
     snprintf(msg, 29, "CPU: %4.1f%%", (curr_jobs * 100.0) / (float)n_cores); // Calculate the percentage and put it in the buffer
     
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }
 
 // Display the current user@hostname
-void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc){
+void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
     static int has_run = 0;
     static char *users_name = NULL;
     static char *host_name = NULL;
@@ -236,25 +241,25 @@ void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc){
 
     snprintf(msg, 50, "%s@%s", users_name, host_name);
 
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }
 
 // Display an environment variable
-void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *var_name, char *format){
+void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *var_name, char *format, unsigned char style){
     char *var_str = getenv(var_name); // Thinking about caching this so it doesn't have to constantly run
     char *msg = malloc(sizeof(char) * 50);
 
     snprintf(msg, 50, format, var_str);
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
     
     free(msg);
 }
 
 // Display info about the current kernel version
 // TODO - Implement the format flag to allow the user to display whatever they want
-void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format){
+void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format, unsigned char style){
     static int has_run = 0;
     char *msg = malloc(sizeof(char)*50);
     static struct utsname system_name = {0};
@@ -265,12 +270,12 @@ void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigne
     }
 
     snprintf(msg, 50, "KRN: %s" , system_name.release);
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }
 
-void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *command){ // This is displaying weird characters at the end of text... Figure out why
+void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *command, unsigned char style){ 
     static unsigned char err_status = 0;
     FILE *fp;
     char *msg = malloc(sizeof(char) * 50);
@@ -290,7 +295,7 @@ void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char 
 
     msg[strnlen(msg,50) - 1] = '\0';
 
-    PrintToBar(dpy, win, fctx, gc, msg, 0);
+    PrintToBar(dpy, win, fctx, gc, msg, style);
 
     free(msg);
 }

@@ -6,11 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MODULE_MODULE_END_STATE 0b00000001
+#define MODULE_NAME_STATE 0b00000010
+#define MODULE_STRING_STATE 0b00000100
 #define MODULE_PARAMETER_STATE 0b00001000
 #define MODULE_PARAMETER_END_STATE 0b00010000
-#define MODULE_STRING_STATE 0b00000100
-#define MODULE_NAME_STATE 0b00000010
-#define MODULE_MODULE_END_STATE 0b00000001
+#define MODULE_ALIGN_STATE 0b00100000
 #define MODULE_END_OF_READ_STATE 0b10000000
 #define MODULE_START_READ_STATE 0b01000000
 
@@ -125,13 +126,18 @@ inline void ReadConfigFile(char *file_name){ // WIP
                 THROW_ERR("ReadConfigFile", "Found MODULES header with no body\nMake sure your data is all on the same line");
                 break;
             }
+
+            free(curr_field_data); // Just reuse curr_field_data so we don't have to create another variable
+            curr_field_data = calloc(10, sizeof(char));
+
             unsigned char module_read_state = 0;
             unsigned char parameter_count = 0;
             unsigned short i = 0; // Iterator for arrays
 
             for(int j = 0; j < strnlen(curr_line, 500); j++){ // Read the whole damn line because sscanf doesn't want to deal with spaces
                 // Format should be:
-                // MODULES = { MODULENAME[param1=0,param2=1,],MODULENAME[],... }
+                // MODULES = { MODULENAME[param1=0,param2=1](ALIGN),MODULENAME[](ALIGN),... }
+                // This is ugly and pain to write but fuck it
                 // Capture module name then add params in
 
                 switch(curr_line[j]){ // Check for special characters 
@@ -154,6 +160,25 @@ inline void ReadConfigFile(char *file_name){ // WIP
                             module_read_state = 0;
                             module_read_state |= MODULE_NAME_STATE;
                             module_read_state |= MODULE_START_READ_STATE;
+                        }
+                        break;
+                    case '(':
+                        if(!(module_read_state & MODULE_PARAMETER_STATE) && !(module_read_state & MODULE_ALIGN_STATE)){
+                            module_read_state |= MODULE_ALIGN_STATE;
+                            i = 0;
+                        }
+                        break;
+                    case ')':
+                        if(module_read_state & MODULE_ALIGN_STATE && !(module_read_state & MODULE_PARAMETER_STATE)){ // Make sure we are actually supposed to be reading this
+                            module_read_state &= ~MODULE_ALIGN_STATE;
+                            if(!strncmp(curr_field_data, "LEFT", 10)){
+                                user_cfg.modules[module_count].style = 1;
+                            }else if(!strncmp(curr_field_data, "RIGHT", 10)){
+                                user_cfg.modules[module_count].style = 2;
+                            }
+                            free(curr_field_data);
+                            curr_field_data = calloc(10, sizeof(char));
+                            i = 0;
                         }
                         break;
                     case '[': // When we have reached the parameter list
@@ -205,6 +230,9 @@ inline void ReadConfigFile(char *file_name){ // WIP
                             i++;
                         }else if(module_read_state & MODULE_PARAMETER_STATE && i < 40){
                             user_cfg.modules[module_count].module_params[parameter_count][i] = curr_line[j];
+                            i++;
+                        }else if(module_read_state & MODULE_ALIGN_STATE && i < 10){
+                            curr_field_data[i] = curr_line[j];
                             i++;
                         }
                 }

@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define REFRESH_RATE 500000
+
 // Globals
 Display *dpy = NULL;
 int screen = 0;
@@ -109,27 +111,27 @@ int main(int argc, char **argv){
 
         for(int i = 0; i < user_cfg.n_modules; i++){ // TODO - Find a way to cache this instead of constantly running
             if(!strncmp(user_cfg.modules[i].module_name, "DisplayTime", 20)){
-                DisplayTime(dpy, &window, &fontctx, &gc, 0);
+                DisplayTime(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayMem", 20)){
-                DisplayMem(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0][0], atoi(user_cfg.modules[i].module_params[1]));
+                DisplayMem(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0][0], atoi(user_cfg.modules[i].module_params[1]), user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayBattery", 20)){
-                DisplayBattery(dpy, &window, &fontctx, &gc);
+                DisplayBattery(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayCpu", 20)){
-                DisplayCpu(dpy, &window, &fontctx, &gc);
+                DisplayCpu(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayUser", 20)){
-                DisplayUser(dpy, &window, &fontctx, &gc);
+                DisplayUser(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayKernel", 20)){
-                DisplayKernel(dpy, &window, &fontctx, &gc, 0);
+                DisplayKernel(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayEnvVar", 20)){
-                DisplayEnvVar(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].module_params[1]);
+                DisplayEnvVar(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].module_params[1], user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayShellCMD", 20)){
-                DisplayShellCMD(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0]);
+                DisplayShellCMD(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].style);
             }
 
         }
 
         XSync(dpy, True); // Update the display
-        usleep(500000);
+        usleep(REFRESH_RATE);
         XftDrawDestroy(fontctx.draw);
     }
 
