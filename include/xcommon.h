@@ -34,7 +34,6 @@
 #include <sys/types.h>
 #endif
     
-
 #define THROW_ERR(module, msg) fprintf(stderr, "\x1b[31m==========| ERROR |==========\x1b[0m\n"), fprintf(stderr, "\x1b[31m%s: %s\x1b[0m\n",module, msg) // Make the process of throwing errors a little less monotonous
 
 typedef struct {

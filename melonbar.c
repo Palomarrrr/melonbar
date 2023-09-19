@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define REFRESH_RATE 500000
+
 // Globals
 Display *dpy = NULL;
 int screen = 0;
@@ -45,28 +47,30 @@ static inline void GCInit(Window *window, GC *gc, XGCValues *xgc_values, FontCon
 }
 
 static inline void DisplayInit(Window *window, XSetWindowAttributes *xwa, GC *gc, XGCValues *xgc_values, FontContext *fontctx, XSizeHints *xsh){
-   if(!(dpy = XOpenDisplay(NULL))){
-        fprintf(stderr, "done fucked up\n"); 
+    if(!(dpy = XOpenDisplay(NULL))){
+        THROW_ERR("DisplayInit", "Failed to open the display");
         exit(1);
-   }
-   screen = DefaultScreen(dpy);
+    }
+    screen = DefaultScreen(dpy);
+    if(user_cfg.bar_wid <= 0) user_cfg.bar_wid = DisplayWidth(dpy, screen) - 2; // Make sure things will actually work
+    if(user_cfg.bar_hgt <= 0) user_cfg.bar_hgt = 25;
 
-   xwa->background_pixel = convertColorString(user_cfg.color_bar);
-   xwa->border_pixel = convertColorString(user_cfg.color_border);
-   xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask;
-   *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel, xwa);
+    xwa->background_pixel = convertColorString(user_cfg.color_bar);
+    xwa->border_pixel = convertColorString(user_cfg.color_border);
+    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask;
+    *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel, xwa);
 
-   GCInit(window, gc, xgc_values, fontctx);
+    GCInit(window, gc, xgc_values, fontctx);
 
-   xsh->min_width = user_cfg.bar_wid;
-   xsh->min_height = user_cfg.bar_hgt; 
-   xsh->max_width = user_cfg.bar_wid; 
-   xsh->max_height = user_cfg.bar_hgt; 
-   xsh->flags = PMinSize | PMaxSize; //| PPosition;
-   XSetSizeHints(dpy, *window, xsh, XA_WM_NORMAL_HINTS);
+    xsh->min_width = user_cfg.bar_wid;
+    xsh->min_height = user_cfg.bar_hgt; 
+    xsh->max_width = user_cfg.bar_wid; 
+    xsh->max_height = user_cfg.bar_hgt; 
+    xsh->flags = PMinSize | PMaxSize; //| PPosition;
+    XSetSizeHints(dpy, *window, xsh, XA_WM_NORMAL_HINTS);
 
-   XStoreName(dpy,*window, "Status Bar");
-   XMapWindow(dpy, *window);
+    XStoreName(dpy,*window, "Status Bar");
+    XMapWindow(dpy, *window);
 }
 
 int main(int argc, char **argv){
@@ -107,27 +111,27 @@ int main(int argc, char **argv){
 
         for(int i = 0; i < user_cfg.n_modules; i++){ // TODO - Find a way to cache this instead of constantly running
             if(!strncmp(user_cfg.modules[i].module_name, "DisplayTime", 20)){
-                DisplayTime(dpy, &window, &fontctx, &gc, 0);
+                DisplayTime(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayMem", 20)){
-                DisplayMem(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0][0], atoi(user_cfg.modules[i].module_params[1]));
+                DisplayMem(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0][0], atoi(user_cfg.modules[i].module_params[1]), user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayBattery", 20)){
-                DisplayBattery(dpy, &window, &fontctx, &gc);
+                DisplayBattery(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayCpu", 20)){
-                DisplayCpu(dpy, &window, &fontctx, &gc);
+                DisplayCpu(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayUser", 20)){
-                DisplayUser(dpy, &window, &fontctx, &gc);
+                DisplayUser(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayKernel", 20)){
-                DisplayKernel(dpy, &window, &fontctx, &gc, 0);
+                DisplayKernel(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayEnvVar", 20)){
-                DisplayEnvVar(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].module_params[1]);
+                DisplayEnvVar(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].module_params[1], user_cfg.modules[i].style);
             }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayShellCMD", 20)){
-                DisplayShellCMD(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0]);
+                DisplayShellCMD(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].style);
             }
 
         }
 
         XSync(dpy, True); // Update the display
-        usleep(500000);
+        usleep(REFRESH_RATE);
         XftDrawDestroy(fontctx.draw);
     }
 

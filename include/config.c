@@ -1,19 +1,22 @@
 #include "config.h"
 #include "xcommon.h"
+#include <X11/Xlib.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define MODULE_MODULE_END_STATE 0b00000001
+#define MODULE_NAME_STATE 0b00000010
+#define MODULE_STRING_STATE 0b00000100
 #define MODULE_PARAMETER_STATE 0b00001000
 #define MODULE_PARAMETER_END_STATE 0b00010000
-#define MODULE_STRING_STATE 0b00000100
-#define MODULE_NAME_STATE 0b00000010
-#define MODULE_MODULE_END_STATE 0b00000001
+#define MODULE_ALIGN_STATE 0b00100000
 #define MODULE_END_OF_READ_STATE 0b10000000
 #define MODULE_START_READ_STATE 0b01000000
 
 UserConfig user_cfg = {
-    .bar_x = 0,
+    .bar_x = -1,
     .bar_y = 0,
     .bar_wid = 1918,
     .bar_hgt = 25,
@@ -25,7 +28,7 @@ UserConfig user_cfg = {
     .config_location = NULL,
 };
 
-int cli_opts[4] = {-1,-1,-1,-1}; // Holder for command line flags
+int cli_opts[4] = {INT_MIN,INT_MIN,INT_MIN,INT_MIN}; // Holder for command line flags
 
 inline void ParseOptions(int argc, char **argv){
     for(int i = 1; i < argc && argv[i][0] == '-'; i++){
@@ -92,7 +95,7 @@ inline void ReadConfigFile(char *file_name){ // WIP
         if(!strncmp(curr_field_label, "BASIC", 20)){ // Do shit to parse whatever in here
             sscanf(curr_field_data, "%d,%d,%d,%d}", &user_cfg.bar_x, &user_cfg.bar_y, &user_cfg.bar_wid, &user_cfg.bar_hgt);
             for(int cli = 0; cli < 4; cli++) // This is really janky... but it works for now
-                if(cli_opts[cli] != -1) // If the option equals -1, then it wasn't changed
+                if(cli_opts[cli] != INT_MIN) // If the opion doesnt equal INT_MIN, then it wasn't changed
                     switch(cli){
                         case 0:
                             user_cfg.bar_x = cli_opts[0];
@@ -106,7 +109,6 @@ inline void ReadConfigFile(char *file_name){ // WIP
                         case 3:
                             user_cfg.bar_hgt = cli_opts[3];
                     }
-                
         }else if(!strncmp(curr_field_label, "COLORS", 20)){
             user_cfg.color_bar = malloc(sizeof(char) * strnlen(curr_field_data, 10));
             user_cfg.color_border = malloc(sizeof(char) * strnlen(curr_field_data, 10));
@@ -124,13 +126,18 @@ inline void ReadConfigFile(char *file_name){ // WIP
                 THROW_ERR("ReadConfigFile", "Found MODULES header with no body\nMake sure your data is all on the same line");
                 break;
             }
+
+            free(curr_field_data); // Just reuse curr_field_data so we don't have to create another variable
+            curr_field_data = calloc(10, sizeof(char));
+
             unsigned char module_read_state = 0;
             unsigned char parameter_count = 0;
             unsigned short i = 0; // Iterator for arrays
 
             for(int j = 0; j < strnlen(curr_line, 500); j++){ // Read the whole damn line because sscanf doesn't want to deal with spaces
                 // Format should be:
-                // MODULES = { MODULENAME[param1=0,param2=1,],MODULENAME[],... }
+                // MODULES = { MODULENAME[param1=0,param2=1](ALIGN),MODULENAME[](ALIGN),... }
+                // This is ugly and pain to write but fuck it
                 // Capture module name then add params in
 
                 switch(curr_line[j]){ // Check for special characters 
@@ -153,6 +160,25 @@ inline void ReadConfigFile(char *file_name){ // WIP
                             module_read_state = 0;
                             module_read_state |= MODULE_NAME_STATE;
                             module_read_state |= MODULE_START_READ_STATE;
+                        }
+                        break;
+                    case '(':
+                        if(!(module_read_state & MODULE_PARAMETER_STATE) && !(module_read_state & MODULE_ALIGN_STATE)){
+                            module_read_state |= MODULE_ALIGN_STATE;
+                            i = 0;
+                        }
+                        break;
+                    case ')':
+                        if(module_read_state & MODULE_ALIGN_STATE && !(module_read_state & MODULE_PARAMETER_STATE)){ // Make sure we are actually supposed to be reading this
+                            module_read_state &= ~MODULE_ALIGN_STATE;
+                            if(!strncmp(curr_field_data, "LEFT", 10)){
+                                user_cfg.modules[module_count].style = 1;
+                            }else if(!strncmp(curr_field_data, "RIGHT", 10)){
+                                user_cfg.modules[module_count].style = 2;
+                            }
+                            free(curr_field_data);
+                            curr_field_data = calloc(10, sizeof(char));
+                            i = 0;
                         }
                         break;
                     case '[': // When we have reached the parameter list
@@ -205,9 +231,11 @@ inline void ReadConfigFile(char *file_name){ // WIP
                         }else if(module_read_state & MODULE_PARAMETER_STATE && i < 40){
                             user_cfg.modules[module_count].module_params[parameter_count][i] = curr_line[j];
                             i++;
+                        }else if(module_read_state & MODULE_ALIGN_STATE && i < 10){
+                            curr_field_data[i] = curr_line[j];
+                            i++;
                         }
                 }
-
                 if(module_count > 20 || module_read_state & MODULE_END_OF_READ_STATE){ // If over limit for commands or end of list
                     user_cfg.n_modules = module_count + 1;
                     break; // Just break out
@@ -217,7 +245,6 @@ inline void ReadConfigFile(char *file_name){ // WIP
         }else{
             THROW_ERR("ReadConfigFile", "There was an invalid field found in your config file\n");
         }
-
         free(curr_line);
         free(curr_field_label);
         free(curr_field_data);

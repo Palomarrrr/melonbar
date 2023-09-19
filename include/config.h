@@ -2,8 +2,9 @@
 #include "xcommon.h"
 
 typedef struct {
-    char module_name[20];
-    char *module_params[4]; // seperated with commas
+    unsigned char style; // Bitflag
+    char module_name[20]; // Name of the module
+    char *module_params[4]; // There should only be 4 params per module
 }Module;
 
 typedef struct {
