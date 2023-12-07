@@ -58,4 +58,4 @@ clean:
 	-rm $(OBJS)
 	-rm $(TARGET)
 
-.SILENT: $(OBJDIR)
+.SILENT: $(OBJDIR) clean

@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <string.h>
+
 #include "./include/xcommon.h"
 #include "./include/modules.h"
 #include "./include/config.h"
@@ -10,8 +13,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xrender.h>
-#include <stdio.h>
-#include <string.h>
 
 #define REFRESH_RATE 500000
 
@@ -57,8 +58,9 @@ static inline void DisplayInit(Window *window, XSetWindowAttributes *xwa, GC *gc
 
     xwa->background_pixel = convertColorString(user_cfg.color_bar);
     xwa->border_pixel = convertColorString(user_cfg.color_border);
-    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask;
-    *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel, xwa);
+    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask; // Add in a do not propagate mask
+    xwa->override_redirect = True;
+    *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel | CWOverrideRedirect, xwa);
 
     GCInit(window, gc, xgc_values, fontctx);
 
@@ -69,7 +71,7 @@ static inline void DisplayInit(Window *window, XSetWindowAttributes *xwa, GC *gc
     xsh->flags = PMinSize | PMaxSize; //| PPosition;
     XSetSizeHints(dpy, *window, xsh, XA_WM_NORMAL_HINTS);
 
-    XStoreName(dpy,*window, "Status Bar");
+    XStoreName(dpy,*window, "Melonbar");
     XMapWindow(dpy, *window);
 }
 

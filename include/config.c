@@ -95,7 +95,7 @@ inline void ReadConfigFile(char *file_name){ // WIP
         if(!strncmp(curr_field_label, "BASIC", 20)){ // Do shit to parse whatever in here
             sscanf(curr_field_data, "%d,%d,%d,%d}", &user_cfg.bar_x, &user_cfg.bar_y, &user_cfg.bar_wid, &user_cfg.bar_hgt);
             for(int cli = 0; cli < 4; cli++) // This is really janky... but it works for now
-                if(cli_opts[cli] != INT_MIN) // If the opion doesnt equal INT_MIN, then it wasn't changed
+                if(cli_opts[cli] != INT_MIN) // If the option doesnt equal INT_MIN, then it wasn't changed
                     switch(cli){
                         case 0:
                             user_cfg.bar_x = cli_opts[0];
