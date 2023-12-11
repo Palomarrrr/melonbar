@@ -15,7 +15,7 @@
 *************************************/
 
 int L_OFFSET = 0;
-int R_OFFSET = 0; // TO BE IMPLEMENTED
+int R_OFFSET = 0;
 
 /*
 char *GetValueAsPercentBar(double curr_val, double max_val, double min_val, double steps, int *strlen){
@@ -63,7 +63,7 @@ void PrintToBar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *msg,
 
 // Get the current local time
 // TODO - Add different formats ex. y-m-d, d-m-y, 24 hour time, etc
-void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format_flag, unsigned char style){
+void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     char *msg= malloc(sizeof(char) * 32);
     time_t t = time(NULL);
     struct tm *local_time= localtime(&t);
@@ -80,7 +80,7 @@ void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
     // Create the return string
     snprintf(msg, 32, "%02d-%02d-%04d | %02d:%02d:%02d %s", local_time->tm_mon+1, local_time->tm_mday, local_time->tm_year+1900, local_time->tm_hour, local_time->tm_min, local_time->tm_sec, ampm);
 
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }
@@ -88,15 +88,16 @@ void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
 // Display the current memory usage
 // I don't this is working correctly either... Need to look into it
 // TODO - Add a preprocessor switch for Linux and other OSs so that this can be used on BSDs
-void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units, unsigned char get_swap, unsigned char style){
+void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static unsigned char err_status = 0;
     struct sysinfo info;
     sysinfo(&info);
     char *msg = malloc(sizeof(char) * 50);
     int max_mem = 0, used_mem = 0;
     int divisor = 1000000000; // To get bytes to gigabytes
+    unsigned char get_swap = atoi(((Module*)module)->module_params[1]);
 
-    switch(units){ // Hey! Actually utilizing case fall through makes me feel smart ok >:(
+    switch(((Module*)module)->module_params[0][0]){ // Hey! Actually utilizing case fall through makes me feel smart ok >:(
         case 'B':
             divisor /= 1000;
         case 'K':
@@ -105,7 +106,7 @@ void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units
             divisor /= 1000;
         case 'G':
             break;
-        default:
+        default:{
             if(!(err_status & 0b00000001) && !get_swap){
                 THROW_ERR("RAMUsage","An invalid memory unit was given to the module\nValid memory units include 'G', 'M', 'K', and 'B'");
                 err_status |= 0b00000001;
@@ -113,26 +114,27 @@ void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units
                 THROW_ERR("SwapUsage","An invalid memory unit was given to the module\nValid memory units include 'G', 'M', 'K', and 'B'");
                 err_status |= 0b00000010;
             }
+        }
     }
     
     // These are in bytes so keep that in mind when dealing with this
     if(!get_swap){
         max_mem = info.totalram / divisor;
         used_mem = (info.totalram - info.freeram) / divisor;
-        snprintf(msg, 50, "MEM:%d%cb/%d%cb", used_mem, units, max_mem, units);
+        snprintf(msg, 50, "MEM:%d%cb/%d%cb", used_mem, ((Module*)module)->module_params[0][0], max_mem, ((Module*)module)->module_params[0][0]);
     }else{
         max_mem = info.totalswap / divisor;
         used_mem = (info.totalswap - info.freeswap) / divisor;
-        snprintf(msg, 50, "SWP:%d%cb/%d%cb", used_mem, units, max_mem, units);
+        snprintf(msg, 50, "SWP:%d%cb/%d%cb", used_mem, ((Module*)module)->module_params[0][0], max_mem, ((Module*)module)->module_params[0][0]);
     }
 
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }
 
 // Display battery percentage
-void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
+void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static unsigned char err_status = 0; // This should act as a basic error flag
     FILE *fp;
 
@@ -143,7 +145,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsign
     // Get the battery percentage
     fp = fopen("/sys/class/power_supply/BAT0/capacity", "r");
 
-    if(fp == NULL){ // If this file doesn't exist, the user might be on a desktop
+    if(!fp){ // If this file doesn't exist, the user might be on a desktop
         if(!err_status){ // Only print this once
             THROW_ERR("BatteryStatus", "There was an error opening /sys/class/power_supply/BAT0/capacity\nIf you're on a desktop, please disable this module");
             err_status = 1;
@@ -158,7 +160,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsign
     if(!err_status)
         fp = fopen("/sys/class/power_supply/BAT0/status", "r");
 
-    if(fp == NULL){ // If this file doesn't exist, the user might be on a desktop
+    if(!fp){ // If this file doesn't exist, the user might be on a desktop
         if(!err_status){ // Only print this once
             THROW_ERR("BatteryStatus", "There was an error opening /sys/class/power_supply/BAT0/status\nIf you're on a desktop, please disable this module");
             err_status = 1;
@@ -170,7 +172,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsign
         snprintf(msg, 50, "BAT:%d%% (%s)", bat_percent, stat);
     }
 
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(stat);
     free(msg); // Clean up
@@ -178,7 +180,7 @@ void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsign
 
 // Display CPU usage
 // I don't think this works properly... Need to look deeper into it
-void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
+void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static unsigned char err_status = 0;
     FILE *fp;
     int n_cores; // number of cpu cores
@@ -221,13 +223,13 @@ void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned c
 
     snprintf(msg, 29, "CPU: %4.1f%%", (curr_jobs * 100.0) / (float)n_cores); // Calculate the percentage and put it in the buffer
     
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }
 
 // Display the current user@hostname
-void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style){
+void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static int has_run = 0;
     static char *users_name = NULL;
     static char *host_name = NULL;
@@ -241,25 +243,25 @@ void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned 
 
     snprintf(msg, 50, "%s@%s", users_name, host_name);
 
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }
 
 // Display an environment variable
-void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *var_name, char *format, unsigned char style){
-    char *var_str = getenv(var_name); // Thinking about caching this so it doesn't have to constantly run
+void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
+    char *var_str = getenv(((Module*)module)->module_params[0]); // Thinking about caching this so it doesn't have to constantly run
     char *msg = malloc(sizeof(char) * 50);
 
-    snprintf(msg, 50, format, var_str);
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    snprintf(msg, 50, ((Module*)module)->module_params[1], var_str);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
     
     free(msg);
 }
 
 // Display info about the current kernel version
 // TODO - Implement the format flag to allow the user to display whatever they want
-void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format, unsigned char style){
+void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static int has_run = 0;
     char *msg = malloc(sizeof(char)*50);
     static struct utsname system_name = {0};
@@ -270,16 +272,16 @@ void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigne
     }
 
     snprintf(msg, 50, "KRN: %s" , system_name.release);
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }
 
-void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *command, unsigned char style){ 
+void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module){
     static unsigned char err_status = 0;
     FILE *fp;
     char *msg = malloc(sizeof(char) * 50);
-    fp = popen(command, "r");
+    fp = popen( ((Module*)module)->module_params[0], "r");
 
     if(fp == NULL){
         if(!err_status){
@@ -295,7 +297,7 @@ void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char 
 
     msg[strnlen(msg,50) - 1] = '\0';
 
-    PrintToBar(dpy, win, fctx, gc, msg, style);
+    PrintToBar(dpy, win, fctx, gc, msg, ((Module*)module)->style);
 
     free(msg);
 }

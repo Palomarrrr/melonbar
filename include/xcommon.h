@@ -57,4 +57,25 @@ typedef struct {
     int vertical_offset; // Vertical offset. I'm guessing how this is calculated is this... (floor(bar_h / 2) + 3). At least it works for everything I've tried so far
 }BarContext;
 
+
+typedef void (*ModuleFN)(Display*,Window*,FontContext*,GC*,void*); // Just to make writing this out easier
+
+typedef struct{
+    unsigned char style; // Bitflag
+    char module_name[20]; // Name of the module
+    char *module_params[4]; // There should only be 4 params per module
+    ModuleFN fn; // Pointer to the function to call for this module
+}Module;
+
+typedef struct {
+    int bar_x, bar_y;
+    int bar_wid, bar_hgt;
+    char *font_name;
+    char *color_bar, *color_border, *color_accent, *color_font;
+    int font_size;
+    char *config_location;
+    unsigned char n_modules;
+    Module modules[20];
+}UserConfig;
+
 unsigned long convertColorString(char *color);

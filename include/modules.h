@@ -1,5 +1,6 @@
 #pragma once
 #include "xcommon.h"
+#include "config.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
@@ -11,12 +12,12 @@
 
 extern int L_OFFSET, R_OFFSET;
 
-void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format_flag, unsigned char style);
-void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, char units, unsigned char get_swap, unsigned char style);
-void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style);
-void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style);
-void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char style);
-void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *var_name, char *format, unsigned char style);
-void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, unsigned char format, unsigned char style);
-void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, char *command, unsigned char style);
 //char *GetValueAsPercentBar(double curr_val, double max_val, double min_val, double steps, int *strlen);
+void DisplayTime(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayMem(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayBattery(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayCpu(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayUser(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayEnvVar(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayKernel(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);
+void DisplayShellCMD(Display *dpy, Window *win, FontContext *fctx, GC *gc, void *module);

@@ -14,7 +14,6 @@ INSTALL_PATH ?= /usr/local/bin
 INCLUDE = -I${PATH_LOCAL_INC} -I${PATH_X11_INC} -I${PATH_FREETYPE_INC} -I${PATH_X11_INC}/freetype2
 LIB = -L${PATH_LOCAL_LIB} -L${PATH_X11_LIB} -lfontconfig -lXft -lX11 -lXrender
 CFLAGS += -O3
-#CFLAGS += -Wall -pedantic -Wextra -Wno-unused-parameter -g
 
 # Targets
 TARGET = melonbar

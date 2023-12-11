@@ -31,6 +31,9 @@ static inline void GCInit(Window *window, GC *gc, XGCValues *xgc_values, FontCon
     fontctx->colorMap = DefaultColormap(dpy, screen);
     XftColorAllocName(dpy, fontctx->visual, fontctx->colorMap, fontctx->colorName, &fontctx->fontColor);
 
+    // Create the font drawable
+    fontctx->draw = XftDrawCreate(dpy, *window, fontctx->visual, fontctx->colorMap);
+
     // Set up XGC stuff
     xgc_values->line_style = LineSolid;
     xgc_values->line_width = 1;
@@ -58,7 +61,7 @@ static inline void DisplayInit(Window *window, XSetWindowAttributes *xwa, GC *gc
 
     xwa->background_pixel = convertColorString(user_cfg.color_bar);
     xwa->border_pixel = convertColorString(user_cfg.color_border);
-    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask; // Add in a do not propagate mask
+    xwa->event_mask = ButtonPressMask|ButtonMotionMask|ButtonReleaseMask|KeyPressMask|ExposureMask|SubstructureNotifyMask|StructureNotifyMask|VisibilityChangeMask;
     xwa->override_redirect = True;
     *window = XCreateWindow(dpy, RootWindow(dpy, screen), user_cfg.bar_x, user_cfg.bar_y, user_cfg.bar_wid, user_cfg.bar_hgt, 1, DefaultDepth(dpy, screen), InputOutput, DefaultVisual(dpy, screen), CWBackPixel | CWEventMask | CWBorderPixel | CWOverrideRedirect, xwa);
 
@@ -101,44 +104,25 @@ int main(int argc, char **argv){
 
     // Loop till you die... or something
     while(1){
-        // Create the font drawable
-        fontctx.draw = XftDrawCreate(dpy, window, fontctx.visual, fontctx.colorMap);
-
         // Reset the offsets
         L_OFFSET = 15;
         R_OFFSET = user_cfg.bar_wid - 15;
 
         XClearWindow(dpy, window);
-        //XNextEvent(dpy, &ev); // Grab the next event
 
-        for(int i = 0; i < user_cfg.n_modules; i++){ // TODO - Find a way to cache this instead of constantly running
-            if(!strncmp(user_cfg.modules[i].module_name, "DisplayTime", 20)){
-                DisplayTime(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayMem", 20)){
-                DisplayMem(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0][0], atoi(user_cfg.modules[i].module_params[1]), user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayBattery", 20)){
-                DisplayBattery(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayCpu", 20)){
-                DisplayCpu(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayUser", 20)){
-                DisplayUser(dpy, &window, &fontctx, &gc, user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayKernel", 20)){
-                DisplayKernel(dpy, &window, &fontctx, &gc, 0, user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayEnvVar", 20)){
-                DisplayEnvVar(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].module_params[1], user_cfg.modules[i].style);
-            }else if(!strncmp(user_cfg.modules[i].module_name, "DisplayShellCMD", 20)){
-                DisplayShellCMD(dpy, &window, &fontctx, &gc, user_cfg.modules[i].module_params[0], user_cfg.modules[i].style);
-            }
-
+        // Loop through all the modules and call their function pointer
+        for(int i = 0; i < user_cfg.n_modules; i++){
+            user_cfg.modules[i].fn(dpy, &window, &fontctx, &gc, &user_cfg.modules[i]);
         }
 
         XSync(dpy, True); // Update the display
-        usleep(REFRESH_RATE);
-        XftDrawDestroy(fontctx.draw);
+
+        usleep(REFRESH_RATE); // Don't run full speed
     }
 
     // Queue the clean up song
     XFreeGC(dpy, gc);
+    XftDrawDestroy(fontctx.draw);
     XUnmapWindow(dpy, window);
     XDestroyWindow(dpy, window);
     XCloseDisplay(dpy);

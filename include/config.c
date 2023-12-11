@@ -185,6 +185,26 @@ inline void ReadConfigFile(char *file_name){ // WIP
                         if(!(module_read_state & MODULE_PARAMETER_STATE)){ // If we are not already reading parameters, start reading them
                             i = 0; // Set the array iterator to 0
                             module_read_state &= ~MODULE_NAME_STATE; // Stop looking for module name
+
+                            // Figure out what module was just read and assign the respective function pointer
+                            if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayTime", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayTime;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayMem", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayMem;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayBattery", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayBattery;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayCpu", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayCpu;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayUser", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayUser;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayKernel", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayKernel;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayEnvVar", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayEnvVar;
+                            }else if(!strncmp(user_cfg.modules[module_count].module_name, "DisplayShellCMD", 20)){
+                                user_cfg.modules[module_count].fn = &DisplayShellCMD;
+                            }
+
                             module_read_state |= MODULE_PARAMETER_STATE; // Start looking for parameters
                             if(!(curr_line[j+1] == ']')){
                                 user_cfg.modules[module_count].module_params[0] = calloc(40, sizeof(char));
